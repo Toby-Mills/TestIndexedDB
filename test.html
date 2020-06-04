@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+    <head></head>
+    <link href='https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css' rel='stylesheet' />
+    <body>
+        <style>
+            body{
+                margin:20px;
+                background-image: url("pet_store.jpg")
+            }
+            #header{
+                background-color: #FFFFFF90;
+                padding: 5px;
+            }
+            .property{
+                font-size:1.2em;
+                color:blue;
+                min-width: 350px;
+            }
+            .value{
+                font-size:1.1em;
+                color:black;
+                margin-left: 10px;
+            }
+            .pet{
+                color:white;
+                padding:2px;
+                background-color: darkslategray ;
+                border: none;
+                border-radius: 3px;
+                margin:2px;
+            }
+            .pets{
+                background-color: rgba(152, 251, 152, 0.651);
+                float:left;
+                width:40%;
+                padding:20px;
+                min-height:500px;
+            }
+            .pet-card{
+                margin:10px;
+                padding:10px;
+                float:left;
+                width:40%;
+                box-shadow: 10px 10px 28px 0px rgba(133,131,133,1);
+            }
+            .tab{
+                border-width:0px 0px 0px 0px;
+                border-color:blue;
+
+            }
+            .tab-selected{
+                border-width:0px 0px 2px 0px;
+            }
+            #dogDetails{
+                clear: both;
+                background-color: rgba(255, 239, 213, 0.801);
+            }
+        </style>
+        <div id='header'>
+        <img id="imgTrimbleLogo" src="trimble-logo.png">
+        <h1> Pet Store :: Dreams Really Do Come True ::</h1></div>
+        <br>
+        <button class='tab' onclick="loadDogs();">DOGS</button>
+        <button class='tab' onclick="loadCats()">CATS</button><br>
+        
+        <div id='divPets' class='pets'>
+        </div>
+        <div id='divPet' class='card pet-card' style='display:none;'>
+            <span class='property'>name:</span><span id=name class='value'></span><br>
+            <span class='property'>colour:</span><span id=colour class='value'></span><br>
+            <span class='property'>favourite food:</span><span id=food class='value'></span><br>
+            <span class='property'>born:</span><span id=born class='value'></span><br>
+    </div>
+    <div id="dogDetails">
+        <span class='property'>Name:</span><input id="add_name" type="text" /><br>
+        <span class='property'>Colour:</span><input id="add_colour" type="text" /><br>
+        <span class='property'>Favorite Food:</span><input id="add_food" type="text" /><br>
+        <button onclick="insertNewPet('dogs')">ADD</button>
+    </div>
+        <script>
+            
+            //***------
+            var db;
+            var storename;
+            var pets=[];
+
+            var DBOpenRequest  = window.indexedDB.open("TrimblePetStore", 1);
+
+            DBOpenRequest.onupgradeneeded = function(upgradeDB){
+                console.log('create store');
+                db = event.target.result;
+                dogs = db.createObjectStore('dogs', {keyPath: 'name'});
+                dogs.createIndex('name', 'name', {unique: false})
+                cats = db.createObjectStore('cats', {keyPath: 'name'});
+                cats.createIndex('name', 'name', {unique: false})
+            }
+            DBOpenRequest.onerror = function(event) {
+                console.log(event.srcElement.error.message);
+            };
+            
+            DBOpenRequest.onsuccess = function(event) {
+                db = DBOpenRequest.result;
+            };
+            
+            function loadDogs(){
+                loadPets('dogs');
+            }
+
+            function loadCats(){
+                loadPets('cats');
+            }
+
+            function loadPets(store){
+                storename=store;
+                pets = [];
+                var tx = db.transaction(storename);
+                var store = tx.objectStore(storename);
+                var request = store.openCursor();
+                request.onsuccess = function(event){
+                    cursor = event.target.result;
+                    if (cursor != null){
+                        console.log(cursor.value)
+                        pets.push(cursor.value);
+                        cursor.continue()
+                    } else {
+                        displayPets(pets, store.name);
+                    }
+                }
+                request.onerror = function(event){
+                    alert('error in cursor request ' + event.target.errorCode);
+                }
+            }
+
+            function displayPets(pets){
+                divPets = document.getElementById("divPets");
+                divPets.innerHTML = '';
+                divPets.innerHTML += '<h2>' + storename + '</h2>'
+                pets.forEach(pet => {
+                    divPets.innerHTML += "<button class='pet' onclick=\"displayPet('" + pet.name + "', '" + storename +"')\">" + pet.name + "</button><br>";                    
+                });
+            }
+
+            function displayPet(petname){
+                var tx = db.transaction(storename);
+                var store = tx.objectStore(storename);
+                var request = store.get(petname);
+                request.onsuccess = function(event){
+                    pet = event.target.result;
+                    divPet  = document.getElementById("divPet");
+                    divPet.style.display = "";
+                    spanName = document.getElementById("name");
+                    spanName.innerHTML = pet.name;
+                    spanColour  = document.getElementById("colour");
+                    spanColour.innerHTML = pet.colour;
+                    spanFood  = document.getElementById("food");
+                    spanFood.innerHTML = pet.food;
+                    spanFood  = document.getElementById("born");
+                    spanFood.innerHTML = pet.created;
+                }
+            }
+
+            function insertNewPet(){
+                var pet={};
+                inputElement=document.getElementById("add_name");
+                pet.name = inputElement.value;
+                inputElement=document.getElementById("add_colour");
+                pet.colour = inputElement.value;
+                inputElement=document.getElementById("add_food");
+                pet.food = inputElement.value;
+                pet.created = new Date();
+
+                tx = db.transaction(storename, 'readwrite');
+                store = tx.objectStore(storename);
+                req = store.add(pet);
+                req.onsuccess = function(event){
+                    loadPets(storename);
+                }
+            }
+        </script>
+
+    </body>
+</html>
